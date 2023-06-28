@@ -45,3 +45,8 @@ required-features = ["riscv"]
 name = "test_invalid_instruction"
 path = "test_invalid_instruction.rs"
 required-features = ["riscv"]
+
+[[bin]]
+name = "test_imprecise_bus_fault"
+path = "test_imprecise_bus_fault.rs"
+required-features = ["riscv"]

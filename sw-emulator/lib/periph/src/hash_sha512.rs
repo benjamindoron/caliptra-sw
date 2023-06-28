@@ -12,6 +12,8 @@ Abstract:
 
 --*/
 
+use core::panic;
+
 use crate::helpers::words_from_bytes_le;
 use crate::key_vault::KeyUsage;
 use crate::KeyVault;
@@ -480,6 +482,9 @@ impl HashSha512 {
             Some(BusError::StoreAccessFault) | Some(BusError::StoreAddrMisaligned) => {
                 (BlockReadStatus::ERROR::KV_WRITE_FAIL.value, None)
             }
+            Some(BusError::StoreAccessFaultImprecise) => {
+                panic!("StoreAccessFaultImprecise in block_read_complete")
+            }
             None => (BlockReadStatus::ERROR::KV_SUCCESS.value, result.ok()),
         };
 
@@ -546,6 +551,9 @@ impl HashSha512 {
             }
             Some(BusError::StoreAccessFault) | Some(BusError::StoreAddrMisaligned) => {
                 HashWriteStatus::ERROR::KV_WRITE_FAIL.value
+            }
+            Some(BusError::StoreAccessFaultImprecise) => {
+                panic!("StoreAccessFaultImprecise in hash_write_complete")
             }
             None => HashWriteStatus::ERROR::KV_SUCCESS.value,
         };

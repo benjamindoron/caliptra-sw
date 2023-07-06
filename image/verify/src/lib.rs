@@ -100,7 +100,7 @@ pub trait ImageVerificationEnv {
         digest: &ImageDigest,
         pub_key: &ImageEccPubKey,
         sig: &ImageEccSignature,
-    ) -> CaliptraResult<bool>;
+    ) -> CaliptraResult<Array4xN<12, 48>>;
 
     /// Perform LMS Verification
     fn lms_verify(

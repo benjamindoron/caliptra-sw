@@ -48,7 +48,7 @@ impl<'a> ImageVerificationEnv for &mut RomImageVerificationEnv<'a> {
         digest: &ImageDigest,
         pub_key: &ImageEccPubKey,
         sig: &ImageEccSignature,
-    ) -> CaliptraResult<bool> {
+    ) -> CaliptraResult<Array4xN<12, 48>> {
         // TODO: Remove following conversions after refactoring the driver ECC384PubKey
         // for use across targets
         let pub_key = Ecc384PubKey {
@@ -67,7 +67,7 @@ impl<'a> ImageVerificationEnv for &mut RomImageVerificationEnv<'a> {
             s: sig.s.into(),
         };
 
-        self.ecc384.verify(&pub_key, &digest, &sig)
+        self.ecc384.verify_r(&pub_key, &digest, &sig)
     }
 
     fn lms_verify(

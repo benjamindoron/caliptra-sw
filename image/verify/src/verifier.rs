@@ -8,7 +8,7 @@ File Name:
 
 Abstract:
 
-    This file is the main implementaiton of Caliptra Image Verifier.
+    This file is the main implementation of Caliptra Image Verifier.
 
 --*/
 
@@ -46,7 +46,7 @@ struct ImageInfo<'a> {
 
 /// Image Verifier
 pub struct ImageVerifier<Env: ImageVerificationEnv> {
-    /// Verifiaction Environment
+    /// Verification Environment
     env: Env,
 }
 
@@ -70,7 +70,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
     ///
     /// # Returns
     ///
-    /// * `ImageVerificationInfo` - Image verifiaction information success
+    /// * `ImageVerificationInfo` - Image verification information success
     pub fn verify(
         &mut self,
         manifest: &ImageManifest,
@@ -337,12 +337,13 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
             Err(CaliptraError::IMAGE_VERIFIER_ERR_OWNER_ECC_SIGNATURE_INVALID_ARG)?;
         }
 
-        let result = self
+        let verify_r = self
             .env
             .ecc384_verify(digest, pub_key, sig)
             .map_err(|_| CaliptraError::IMAGE_VERIFIER_ERR_OWNER_ECC_VERIFY_FAILURE)?;
 
-        if !result {
+        // [TODO][CFI]
+        if verify_r != caliptra_drivers::Array4xN(sig.r) {
             Err(CaliptraError::IMAGE_VERIFIER_ERR_OWNER_ECC_SIGNATURE_INVALID)?;
         }
 
@@ -355,26 +356,27 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
         digest: &ImageDigest,
         pub_key: &ImageEccPubKey,
         lms_pub_key: &ImageLmsPublicKey,
-        sig: &ImageEccSignature,
+        ecc_sig: &ImageEccSignature,
         lms_sig: &ImageLmsSignature,
     ) -> CaliptraResult<()> {
         if pub_key.x == ZERO_DIGEST || pub_key.y == ZERO_DIGEST {
             Err(CaliptraError::IMAGE_VERIFIER_ERR_VENDOR_PUB_KEY_DIGEST_INVALID_ARG)?;
         }
-        if sig.r == ZERO_DIGEST || sig.s == ZERO_DIGEST {
+        if ecc_sig.r == ZERO_DIGEST || ecc_sig.s == ZERO_DIGEST {
             Err(CaliptraError::IMAGE_VERIFIER_ERR_VENDOR_ECC_SIGNATURE_INVALID_ARG)?;
         }
 
-        let mut result = self
+        let verify_r = self
             .env
-            .ecc384_verify(digest, pub_key, sig)
+            .ecc384_verify(digest, pub_key, ecc_sig)
             .map_err(|_| CaliptraError::IMAGE_VERIFIER_ERR_VENDOR_ECC_VERIFY_FAILURE)?;
 
-        if !result {
+        // [TODO][CFI]
+        if verify_r != caliptra_drivers::Array4xN(ecc_sig.r) {
             Err(CaliptraError::IMAGE_VERIFIER_ERR_VENDOR_ECC_SIGNATURE_INVALID)?;
         }
 
-        result = self
+        let result = self
             .env
             .lms_verify(digest, lms_pub_key, lms_sig)
             .map_err(|_| CaliptraError::IMAGE_VERIFIER_ERR_VENDOR_LMS_VERIFY_FAILURE)?;
@@ -407,7 +409,7 @@ impl<Env: ImageVerificationEnv> ImageVerifier<Env> {
             Err(CaliptraError::IMAGE_VERIFIER_ERR_TOC_DIGEST_MISMATCH)?;
         }
 
-        // Image length donot exceeed the Image Bundle size
+        // Image length does not exceed the Image Bundle size
         let img_len: u64 = manifest.size as u64
             + manifest.fmc.image_size() as u64
             + manifest.runtime.image_size() as u64;
@@ -1458,9 +1460,13 @@ mod tests {
             &mut self,
             _digest: &ImageDigest,
             _pub_key: &ImageEccPubKey,
-            _sig: &ImageEccSignature,
-        ) -> CaliptraResult<bool> {
-            Ok(self.verify_result)
+            sig: &ImageEccSignature,
+        ) -> CaliptraResult<Array4xN<12, 48>> {
+            if self.verify_result {
+                Ok(Array4x12::from(sig.r))
+            } else {
+                Ok(Array4x12::default())
+            }
         }
 
         fn lms_verify(

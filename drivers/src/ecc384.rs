@@ -14,7 +14,8 @@ Abstract:
 
 use crate::kv_access::{KvAccess, KvAccessErr};
 use crate::{
-    array_concat3, wait, Array4x12, CaliptraError, CaliptraResult, KeyReadArgs, KeyWriteArgs, Trng,
+    array_concat3, wait, Array4x12, Array4xN, CaliptraError, CaliptraResult, KeyReadArgs,
+    KeyWriteArgs, Trng,
 };
 use caliptra_registers::ecc::EccReg;
 use zerocopy::{AsBytes, FromBytes};
@@ -280,6 +281,9 @@ impl Ecc384 {
     /// * `digest` - digest to verify
     /// * `signature` - Signature to verify
     ///
+    ///  Note: Use this function only if glitch protection is not needed.
+    ///        If glitch protection is needed, use `verify_r` instead.
+    ///
     /// # Result
     ///
     /// *  `bool` - True if the signature verification passed else false
@@ -289,6 +293,34 @@ impl Ecc384 {
         digest: &Ecc384Scalar,
         signature: &Ecc384Signature,
     ) -> CaliptraResult<bool> {
+        // Get the verify r result
+        let mut verify_r = self.verify_r(pub_key, digest, signature)?;
+
+        // compare the hardware generate `r` with one in signature
+        let result = verify_r == signature.r;
+        verify_r.0.fill(0);
+        Ok(result)
+    }
+
+    /// Returns the R value of the signature with specified public key and digest.
+    ///  Caller is expected to compare the returned R value against the provided signature's
+    ///  R value to determine whether the signature is valid.
+    ///
+    /// # Arguments
+    ///
+    /// * `pub_key` - Public key
+    /// * `digest` - digest to verify
+    /// * `signature` - Signature to verify
+    ///
+    /// # Result
+    ///
+    /// *  `Array4xN<12, 48>` - verify R value
+    pub fn verify_r(
+        &mut self,
+        pub_key: &Ecc384PubKey,
+        digest: &Ecc384Scalar,
+        signature: &Ecc384Signature,
+    ) -> CaliptraResult<Array4xN<12, 48>> {
         let ecc = self.ecc.regs_mut();
 
         // Wait for hardware ready
@@ -314,12 +346,9 @@ impl Ecc384 {
         // Copy the random value
         let verify_r = Array4x12::read_from_reg(ecc.verify_r());
 
-        // compare the hardware generate `r` with one in signature
-        let result = verify_r == signature.r;
-
         self.zeroize_internal();
 
-        Ok(result)
+        Ok(verify_r)
     }
 
     /// Zeroize the hardware registers.

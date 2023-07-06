@@ -188,7 +188,7 @@ impl Crypto {
 
     /// Verify the ECC Signature
     ///
-    /// This routine calculates the digest and verifies the signature
+    /// This routine calculates the digest and returns the verify R value of the signature
     ///
     /// # Arguments
     ///
@@ -199,17 +199,15 @@ impl Crypto {
     ///
     /// # Returns
     ///
-    /// * `bool` - True on success, false otherwise
+    /// *  `Array4xN<12, 48>` - verify R value
     pub fn ecdsa384_verify(
         env: &mut RomEnv,
         pub_key: &Ecc384PubKey,
         data: &[u8],
         sig: &Ecc384Signature,
-    ) -> CaliptraResult<bool> {
+    ) -> CaliptraResult<Array4xN<12, 48>> {
         let mut digest = Self::sha384_digest(env, data);
         let digest = okmutref(&mut digest)?;
-        let result = env.ecc384.verify(pub_key, digest, sig);
-        digest.0.fill(0);
-        result
+        env.ecc384.verify_r(pub_key, digest, sig)
     }
 }

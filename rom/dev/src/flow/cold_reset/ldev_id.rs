@@ -176,9 +176,11 @@ impl LocalDevIdLayer {
         env.key_vault.erase_key(auth_priv_key)?;
 
         // Verify the signature of the `To Be Signed` portion
-        if !Crypto::ecdsa384_verify(env, auth_pub_key, tbs.tbs(), sig)? {
+        let mut verify_r = Crypto::ecdsa384_verify(env, auth_pub_key, tbs.tbs(), sig)?;
+        if verify_r != sig.r {
             return Err(CaliptraError::ROM_LDEVID_CSR_VERIFICATION_FAILURE);
         }
+        verify_r.0.fill(0);
 
         let _pub_x: [u8; 48] = (&pub_key.x).into();
         let _pub_y: [u8; 48] = (&pub_key.y).into();

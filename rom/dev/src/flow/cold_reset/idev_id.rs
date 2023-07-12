@@ -230,10 +230,7 @@ impl InitDevIdLayer {
         let mut sig = Crypto::ecdsa384_sign(env, key_pair.priv_key, tbs.tbs());
         let sig = okmutref(&mut sig)?;
 
-        // Verify the signature of the `To Be Signed` portion
-        if !Crypto::ecdsa384_verify(env, &key_pair.pub_key, tbs.tbs(), sig)? {
-            return Err(CaliptraError::ROM_IDEVID_CSR_VERIFICATION_FAILURE);
-        }
+        // No need to verify the signature since ecc384:key_gen performs a pairwise consistency test.
 
         // [TODO] Due to printing of the CSR, rom sections are hitting max limits.
         // Add this back when CSR printing is removed from here and added to test cases.

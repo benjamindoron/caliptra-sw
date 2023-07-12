@@ -138,7 +138,6 @@ impl LocalDevIdLayer {
         output: &DiceOutput,
     ) -> CaliptraResult<()> {
         let auth_priv_key = input.auth_key_pair.priv_key;
-        let auth_pub_key = &input.auth_key_pair.pub_key;
         let pub_key = &output.subj_key_pair.pub_key;
 
         let serial_number = X509::cert_sn(env, pub_key);
@@ -173,10 +172,7 @@ impl LocalDevIdLayer {
         //cprintln!("[ldev] Erasing AUTHORITY.KEYID = {}", auth_priv_key as u8);
         env.key_vault.erase_key(auth_priv_key)?;
 
-        // Verify the signature of the `To Be Signed` portion
-        if !Crypto::ecdsa384_verify(env, auth_pub_key, tbs.tbs(), sig)? {
-            return Err(CaliptraError::ROM_LDEVID_CSR_VERIFICATION_FAILURE);
-        }
+        // No need to verify the signature since ecc384:key_gen performs a pairwise consistency test.
 
         let _pub_x: [u8; 48] = (&pub_key.x).into();
         let _pub_y: [u8; 48] = (&pub_key.y).into();

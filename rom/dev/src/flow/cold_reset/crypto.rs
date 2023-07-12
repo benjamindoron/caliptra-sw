@@ -222,31 +222,4 @@ impl Crypto {
         digest.0.fill(0);
         result
     }
-
-    /// Verify the ECC Signature
-    ///
-    /// This routine calculates the digest and verifies the signature
-    ///
-    /// # Arguments
-    ///
-    /// * `env` - ROM Environment
-    /// * `pub_key` - Public key to verify the signature
-    /// * `data` - Input data to hash
-    /// * `sig` - Signature to verify
-    ///
-    /// # Returns
-    ///
-    /// * `bool` - True on success, false otherwise
-    pub fn ecdsa384_verify(
-        env: &mut RomEnv,
-        pub_key: &Ecc384PubKey,
-        data: &[u8],
-        sig: &Ecc384Signature,
-    ) -> CaliptraResult<bool> {
-        let mut digest = Self::sha384_digest(env, data);
-        let digest = okmutref(&mut digest)?;
-        let result = env.ecc384.verify(pub_key, digest, sig);
-        digest.0.fill(0);
-        result
-    }
 }

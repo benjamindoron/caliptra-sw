@@ -234,9 +234,11 @@ impl FuseBank<'_> {
     ///
     pub fn runtime_svn(&self) -> u32 {
         let soc_ifc_regs = self.soc_ifc.regs();
-        64 - ((soc_ifc_regs.fuse_runtime_svn().at(1).read() as u64) << 32
-            | soc_ifc_regs.fuse_runtime_svn().at(0).read() as u64)
-            .leading_zeros()
+        let fuse: u128 = ((soc_ifc_regs.fuse_runtime_svn().at(3).read() as u128) << 96)
+            | ((soc_ifc_regs.fuse_runtime_svn().at(2).read() as u128) << 64)
+            | ((soc_ifc_regs.fuse_runtime_svn().at(1).read() as u128) << 32)
+            | soc_ifc_regs.fuse_runtime_svn().at(0).read() as u128;
+        128 - fuse.leading_zeros()
     }
 
     /// Get the lms revocation bits.

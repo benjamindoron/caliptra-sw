@@ -116,6 +116,13 @@ jobs:
           (cd /tmp/ && git clone --depth 1 --branch old-framework-2.x https://github.com/riscv-non-isa/riscv-arch-test)
           cargo --config "$EXTRA_CARGO_CONFIG" run --locked -p compliance-test -- --test_root_path /tmp/riscv-arch-test
 
+      # Run sequentially, using maximum worker count for each run, for a total of one hour
+      - name: Run fuzzers
+        run: |
+          rustup toolchain install nightly-2023-04-15 && cargo +nightly-2023-04-15 install cargo-fuzz cargo-afl
+          mkdir -p image/verify/fuzz/corpus && for x in $(seq 001 011); do cargo run -j$(nproc) --manifest-path=builder/Cargo.toml --release --bin image -- --rom elf2rom_built.rom --fw caliptra-builder_built_fw.bundle; mv caliptra-builder_built_fw.bundle image/verify/fuzz/corpus/${x}; rm elf2rom_built.rom; cargo clean; done
+          (cd image/verify/fuzz/ && mkdir -p corpus artifacts/fuzz_target_{1,updatereset} && cargo +nightly-2023-04-15 fuzz run -s address fuzz_target_1 corpus -- -max_len=23692 -max_total_time=3600 -jobs=$(($(nproc) / 2)))
+
       - name: ROM Makefile
         run: |
           (cd rom/dev && make run)

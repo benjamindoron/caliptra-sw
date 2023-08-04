@@ -39,7 +39,7 @@ use caliptra_common::memory_layout::{
 };
 use caliptra_common::{cprintln, FirmwareHandoffTable};
 use caliptra_drivers::{CaliptraError, CaliptraResult, DataVault, Ecc384, KeyVault, SocIfc};
-use caliptra_drivers::{Hmac384, PcrBank, PcrId, Sha256, Sha384, Sha384Acc, Trng};
+use caliptra_drivers::{Hmac384, PcrBank, PcrId, Sha256HardwareDriver, Sha384, Sha384Acc, Trng};
 use caliptra_image_types::ImageManifest;
 use caliptra_registers::mbox::enums::MboxStatusE;
 use caliptra_registers::{
@@ -85,7 +85,7 @@ pub struct Drivers<'a> {
     pub key_vault: KeyVault,
     pub soc_ifc: SocIfc,
     pub regions: MemoryRegions,
-    pub sha256: Sha256,
+    pub sha256: Sha256HardwareDriver,
 
     // SHA2-384 Engine
     pub sha384: Sha384,
@@ -169,7 +169,7 @@ impl<'a> Drivers<'a> {
             key_vault,
             soc_ifc: SocIfc::new(SocIfcReg::new()),
             regions: MemoryRegions::new(),
-            sha256: Sha256::new(Sha256Reg::new()),
+            sha256: Sha256HardwareDriver::new(Sha256Reg::new()),
             sha384,
             sha384_acc: Sha384Acc::new(Sha512AccCsr::new()),
             hmac384,

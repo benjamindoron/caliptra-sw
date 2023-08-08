@@ -16,7 +16,7 @@ Abstract:
 
 use core::mem::MaybeUninit;
 
-use crate::{Array4x8, CaliptraResult, Sha256};
+use crate::{Array4x8, CaliptraResult, sha256::Sha256};
 use caliptra_error::CaliptraError;
 use caliptra_lms_types::{
     LmotsAlgorithmType, LmsAlgorithmType, LmsIdentifier, LmsPublicKey, LmsSignature,
@@ -283,7 +283,7 @@ impl Lms {
 
     pub fn hash_message<const N: usize>(
         &self,
-        sha256_driver: &mut Sha256,
+        sha256_driver: &mut impl Sha256,
         message: &[u8],
         lms_identifier: &LmsIdentifier,
         q: &[u8; 4],
@@ -302,7 +302,7 @@ impl Lms {
 
     pub fn candidate_ots_signature<const N: usize, const P: usize>(
         &self,
-        sha256_driver: &mut Sha256,
+        sha256_driver: &mut impl Sha256,
         lms_identifier: &LmsIdentifier,
         algo_type: LmotsAlgorithmType,
         q: &[u8; 4],
@@ -379,7 +379,7 @@ impl Lms {
 
     pub fn verify_lms_signature<const N: usize, const P: usize, const H: usize>(
         &self,
-        sha256_driver: &mut Sha256,
+        sha256_driver: &mut impl Sha256,
         input_string: &[u8],
         lms_public_key: &LmsPublicKey<N>,
         lms_sig: &LmsSignature<N, P, H>,

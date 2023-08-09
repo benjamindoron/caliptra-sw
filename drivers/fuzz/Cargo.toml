@@ -1,0 +1,30 @@
+[package]
+name = "caliptra-drivers-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.caliptra-drivers]
+path = ".."
+
+[dependencies.caliptra-lms-types]
+path = "../../lms-types"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fuzz_target_lms"
+path = "fuzz_targets/fuzz_target_lms.rs"
+test = false
+doc = false

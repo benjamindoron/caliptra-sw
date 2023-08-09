@@ -228,6 +228,7 @@ dependencies = [
  "caliptra-test",
  "cfg-if 1.0.0",
  "openssl",
+ "sha2",
  "ufmt",
  "ureg",
  "zerocopy",

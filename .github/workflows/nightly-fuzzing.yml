@@ -1,0 +1,98 @@
+name: Fuzz Testing Nightly
+on:
+  workflow_call:
+  workflow_dispatch:
+  # TODO: Enable when fuzz targets are merged
+  schedule:
+    # 3:00 AM PST monday-saturday
+    - cron: '00 11 * * 1-6'
+
+jobs:
+  image_verify:
+    name: Image Verifier fuzzing
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    env:
+      # Change this to a new random value if you suspect the cache is corrupted
+      CACHE_BUSTER: 6542f37bb328
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          submodules: 'true'
+
+      - name: Install dependencies
+        run: |
+          rustup toolchain install nightly-2023-04-15
+          cargo +nightly-2023-04-15 install cargo-fuzz cargo-afl
+          echo "TODO: Yama ptrace knob is:" && cat /proc/sys/kernel/yama/ptrace_scope
+          #echo 1 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+
+      - name: Restore corpus dir
+        uses: actions/cache/restore@v3
+        with:
+          path: ./image/verify/fuzz/corpus/
+          key: image_verify-${{ env.CACHE_BUSTER }}
+
+      - name: Restore seed corpus
+        uses: actions/cache/restore@v3
+        id: image_bundle_restore
+        with:
+          path: ./image/verify/fuzz/seed_corpus/
+          key: image_verify-seed_corpus-${{ env.CACHE_BUSTER }}
+
+      - name: Build seed corpus
+        if: steps.image_bundle_restore.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p image/verify/fuzz/seed_corpus
+          for x in $(seq 001 011); do
+            cargo run -j$(nproc) --manifest-path=builder/Cargo.toml --release --bin image -- --rom elf2rom_built.rom --fw caliptra-builder_built_fw.bundle; \
+            mv caliptra-builder_built_fw.bundle image/verify/fuzz/seed_corpus/${x}; \
+            rm elf2rom_built.rom; cargo clean; \
+          done
+
+      - name: Save seed corpus
+        uses: actions/cache/save@v3
+        if: steps.image_bundle_restore.outputs.cache-hit != 'true'
+        with:
+          path: ./image/verify/fuzz/seed_corpus/
+          key: image_verify-seed_corpus-${{ env.CACHE_BUSTER }}
+
+      - name: Run fuzzing
+        run: |
+          cd image/verify/fuzz/
+          mkdir -p corpus artifacts/fuzz_target_1
+          cargo +nightly-2023-04-15 fuzz run --features libfuzzer-sys -s address fuzz_target_1 corpus seed_corpus -- -max_len=23692 -max_total_time=3600 -jobs=$(($(nproc) / 2))
+
+      - name: Export coverage
+        run: |
+          cd image/verify/fuzz/
+          cargo +nightly-2023-04-15 fuzz coverage --features libfuzzer-sys -s address fuzz_target_1 corpus seed_corpus -- -max_len=23692
+          ~/.rustup/toolchains/nightly-2023-04-15-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-cov show target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-gnu/release/fuzz_target_1 --format=html -instr-profile=coverage/fuzz_target_1/coverage.profdata > index.html
+
+      - name: Merge corpus between runs
+        run: |
+          cd image/verify/fuzz/
+          mkdir new_corpus
+          cargo +nightly-2023-04-15 fuzz run --features libfuzzer-sys -s address fuzz_target_1 new_corpus corpus -- -max_len=23692 -jobs=$(($(nproc) / 2)) -merge=1
+          rm -rf corpus && mv new_corpus corpus
+
+      - name: Save corpus dir
+        uses: actions/cache/save@v3
+        with:
+          path: ./image/verify/fuzz/corpus/
+          key: image_verify-${{ env.CACHE_BUSTER }}
+
+      - name: Archive corpus dir
+        uses: actions/upload-artifact@v3
+        with:
+          name: corpus
+          path: ./image/verify/fuzz/corpus/
+
+      - name: Archive fuzzing coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: ./image/verify/fuzz/index.html
